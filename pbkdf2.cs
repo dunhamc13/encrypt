@@ -21,7 +21,7 @@
  *
  * Dynamic Memory:
  *    The only dynamic memory comes from the socket API and taken care of in
- *    the server code.
+ *    the server code. Testing VS change git.
  *
  *******************************************************************************
  *******************************************************************************
