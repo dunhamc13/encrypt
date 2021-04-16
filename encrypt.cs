@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * This code is largerly derived from the microsoft documentation on rfc2898
  * https://docs.microsoft.com/en-us/dotnet/api/
  *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
@@ -55,7 +55,7 @@
 */
 using System;
 using System.IO;
-using System.Text;  
+using System.Text;
 using System.Security.Cryptography; //For rfc2898
 using System.Diagnostics; //For timer
 
@@ -71,11 +71,11 @@ public class rfc2898key
     private const string usageText = "Usage: RFC2898 <password>\nYou must specify the password for encryption.\n";
     public static void Main(string[] passwordargs)
     {
-               //Implement timer for diagnostics
-               //Code modified from https://docs.microsoft.com/en-us/dotnet/
-               //         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
-               Stopwatch stopWatch = new Stopwatch();
-               stopWatch.Start();
+        //Implement timer for diagnostics
+        //Code modified from https://docs.microsoft.com/en-us/dotnet/
+        //         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
+        Stopwatch stopWatch = new Stopwatch();
+        stopWatch.Start();
         //If no file name is specified, write usage text.
         if (passwordargs.Length == 0)
         {
@@ -84,7 +84,7 @@ public class rfc2898key
         else
         {
             string pwd1 = passwordargs[0];
-            
+
             //Create a byte array to hold the random value.
             byte[] salt1 = new byte[8];
 
@@ -102,47 +102,47 @@ public class rfc2898key
             int myIterations = 1000000;
             try
             {
-               /*
-                * 1. Create a master key using PBKDF#2
-                * The rfc2898DeriveBytes function from the .NET Cryptography.Security
-                * takes a password, salt, number of iterations, and algorith
-                * to create the master key.
-                * pwd1: the password to encrypt
-                * salt1: a set of at least 8 bytes
-                * myIterations: number of iterations (at least 1000)
-                * HashAlgorithmName: hashing algorithm - see 
-                *       https://docs.microsoft.com/en-us/dotnet/api/
-                *       system.security.cryptography.hashalgorithmname?
-                *       view=net-5.0
-                *       For more information
-                * output: k1: a master key from arguments
-                * TODO import time api and test different iterations
-               */
-
-               
-               //Make master key object
-               Rfc2898DeriveBytes masterKey_Obj = new Rfc2898DeriveBytes
-                   (pwd1, salt1, myIterations, HashAlgorithmName.SHA256);
-               
-
-               
-               //Use rfc2898 object to make master key
-               byte[] masterKey_Bytes = masterKey_Obj.GetBytes(32);
-               
-               /*
-                * 2. Create encryption key and hmac key
-                * Once we have an rfc2898 generated master key we use it 
-                * to derive the keys, but change the salt and iterations.
-                * masterKey_Bytes: the password to encrypt
-                * salt2/3: unique to each key needs to be at least 8 bytes
-                * numIter: number of iterations set to 1 as per specificaition
-                * HashAlgorithmName: hashing algorithm - see 
-                *       https://docs.microsoft.com/en-us/dotnet/api/
-                *       system.security.cryptography.hashalgorithmname?
-                *       view=net-5.0
-                *       For more information
-                * output: encryptionKey/HMAC_Key: a master key from arguments
+                /*
+                 * 1. Create a master key using PBKDF#2
+                 * The rfc2898DeriveBytes function from the .NET Cryptography.Security
+                 * takes a password, salt, number of iterations, and algorith
+                 * to create the master key.
+                 * pwd1: the password to encrypt
+                 * salt1: a set of at least 8 bytes
+                 * myIterations: number of iterations (at least 1000)
+                 * HashAlgorithmName: hashing algorithm - see 
+                 *       https://docs.microsoft.com/en-us/dotnet/api/
+                 *       system.security.cryptography.hashalgorithmname?
+                 *       view=net-5.0
+                 *       For more information
+                 * output: k1: a master key from arguments
+                 * TODO import time api and test different iterations
                 */
+
+
+                //Make master key object
+                Rfc2898DeriveBytes masterKey_Obj = new Rfc2898DeriveBytes
+                    (pwd1, salt1, myIterations, HashAlgorithmName.SHA256);
+
+
+
+                //Use rfc2898 object to make master key
+                byte[] masterKey_Bytes = masterKey_Obj.GetBytes(32);
+
+                /*
+                 * 2. Create encryption key and hmac key
+                 * Once we have an rfc2898 generated master key we use it 
+                 * to derive the keys, but change the salt and iterations.
+                 * masterKey_Bytes: the password to encrypt
+                 * salt2/3: unique to each key needs to be at least 8 bytes
+                 * numIter: number of iterations set to 1 as per specificaition
+                 * HashAlgorithmName: hashing algorithm - see 
+                 *       https://docs.microsoft.com/en-us/dotnet/api/
+                 *       system.security.cryptography.hashalgorithmname?
+                 *       view=net-5.0
+                 *       For more information
+                 * output: encryptionKey/HMAC_Key: a master key from arguments
+                 */
 
                 //Encryption Key Creation
                 string encryptionSalt_String = "I am the Encryption Key";
@@ -178,7 +178,7 @@ data1);
                 byte[] edata1 = encryptionStream.ToArray();
                 Console.WriteLine(Convert.ToBase64String(edata1));
                 */
-                
+
                 //k1.Reset();
 
                 //Rfc2898DeriveBytes encryptKey = masterKey.CryptDeriveKey("AES","SHA256",256,encAlg.IV);
@@ -215,11 +215,12 @@ decryptionStreamBacking.ToArray());
                 Console.WriteLine("Error: {0}", e);
             }
         }
-               //Get time
-               stopWatch.Stop();
-               TimeSpan ts = stopWatch.Elapsed;
-               string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-                     ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
-               Console.WriteLine("RunTime " + stopWatch.Elapsed);
+        //Get time
+        stopWatch.Stop();
+        TimeSpan ts = stopWatch.Elapsed;
+        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+              ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+        Console.WriteLine("RunTime " + stopWatch.Elapsed);
     }
 }
+

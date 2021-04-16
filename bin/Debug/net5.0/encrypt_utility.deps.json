@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v5.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v5.0": {
+      "encrypt_utility/1.0.0": {
+        "runtime": {
+          "encrypt_utility.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "encrypt_utility/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
