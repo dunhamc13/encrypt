@@ -76,6 +76,12 @@ public class rfc2898key
         //         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
         Stopwatch stopWatch = new Stopwatch();
         stopWatch.Start();
+        string dataFile;
+        string signedFile;
+
+        //if using VS this will place files in the main repo folder
+        //else change path to desired location
+        dataFile = @"..\..\..\text.txt";
         //If no file name is specified, write usage text.
         if (passwordargs.Length == 0)
         {
@@ -167,6 +173,38 @@ public class rfc2898key
                  */
                 byte[] encrypted = encrypt(plainText, encryptionKey);
                 Console.WriteLine("Encrypted (b64-encode): {0}", Convert.ToBase64String(encrypted));
+                
+                // UTF conversion - String from bytes for HMAC_Signature  
+                string utfString = Encoding.UTF8.GetString(encrypted, 0, encrypted.Length);
+                string b64 = Convert.ToBase64String(encrypted);
+                //Console.WriteLine(utfString);
+                Console.WriteLine(b64);
+
+                // Create a file to write to.
+                using (StreamWriter sw = File.CreateText(dataFile))
+                {
+                    //sw.WriteLine(utfString);
+                    sw.WriteLine(b64);
+                }
+                signedFile = @"..\..\..\signedFile.enc";
+                Console.WriteLine(signedFile);
+
+                /*
+                 * 4. Create HMAC of the IV and encrypted data
+                 * output: 
+                */
+                HMAC_Signature(HMAC_Key, dataFile, signedFile);
+                // Open the stream and read it back.    
+                Console.WriteLine("Opening HMAC File");
+                using (StreamReader sr = File.OpenText(signedFile))
+                {
+                    string s = "";
+                    while ((s = sr.ReadLine()) != null)
+                    {
+                        Console.WriteLine(s);
+                    }
+                }
+              
                 /*
 
                 //encrypt data
@@ -229,7 +267,8 @@ decryptionStreamBacking.ToArray());
 
     /*
      * encrypt(string plainText, byte[] key)
-     * 
+     * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
+     *                              system.security.cryptography.aes?view=netframework-4.8
      *  
     */
     static byte[] encrypt(string plainText, Rfc2898DeriveBytes encryptedKey) 
@@ -266,5 +305,50 @@ decryptionStreamBacking.ToArray());
         // Return the encrypted bytes from the memory stream. 
         return combinedIvCt;
     }
+
+    // Computes a keyed hash for a source file and creates a target file with the keyed hash
+    // prepended to the contents of the source file.
+    /*
+ * HMAC_Signature(string plainText, byte[] key)
+ * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
+ *                              system.security.cryptography.hmacsha512?view=net-5.0
+ *  
+*/
+    public static void HMAC_Signature(Rfc2898DeriveBytes key, String sourceFile, String destFile)
+    {
+ 
+            byte[] Hmac_Key = key.GetBytes(32);
+
+            // Initialize the keyed hash object.
+            using (HMACSHA512 hmac = new HMACSHA512(Hmac_Key))
+        {
+            using (FileStream inStream = new FileStream(sourceFile, FileMode.Open))
+            {
+                using (FileStream outStream = new FileStream(destFile, FileMode.Create))
+                {
+                    // Compute the hash of the input file.
+                    byte[] hashValue = hmac.ComputeHash(inStream);
+                    Console.WriteLine("hashValue: {0}", Convert.ToBase64String(hashValue));
+                    // Reset inStream to the beginning of the file.
+                    inStream.Position = 0;
+                    // Write the computed hash value to the output file.
+                    outStream.Write(hashValue, 0, hashValue.Length);
+                    // Copy the contents of the sourceFile to the destFile.
+                    int bytesRead;
+                    // read 1K at a time
+                    byte[] buffer = new byte[1024];
+                    do
+                    {
+                        // Read from the wrapping CryptoStream.
+                        bytesRead = inStream.Read(buffer, 0, 1024);
+                        outStream.Write(buffer, 0, bytesRead);
+                    } while (bytesRead > 0);
+
+                }
+
+            }
+        }
+        return;
+    } // end SignFile
 }
 
