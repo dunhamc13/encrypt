@@ -84,6 +84,7 @@ public class rfc2898key
         else
         {
             string pwd1 = passwordargs[0];
+            string plainText = "This is the plaintext to encrypt test.";
 
             //Create a byte array to hold the random value.
             byte[] salt1 = new byte[8];
@@ -156,14 +157,17 @@ public class rfc2898key
                 byte[] salt3 = Encoding.ASCII.GetBytes(HMAC_Salt_String);
                 Rfc2898DeriveBytes HMAC_Key = new Rfc2898DeriveBytes
                    (masterKey_Bytes, salt3, numIter, HashAlgorithmName.SHA256);
-                /*
-                Aes encryptedKey = Aes.Create();
-                encryptedKey.Key = masterKey.GetBytes(32);
-                Console.WriteLine(Encoding.UTF8.GetString(encryptedKey.Key));
 
-                Aes hmacKey = Aes.Create();
-                hmacKey.Key = masterKey.GetBytes(32); 
-                Console.WriteLine(Encoding.UTF8.GetString(hmacKey.Key));
+                /*
+                 * 3. Encrypt data using CBC chaining mode
+                 * Must work with 3DES, AES128, AES256
+                 * Use random IV that is one block size
+                 * Do not assume block size
+                 * output: 
+                 */
+                byte[] encrypted = encrypt(plainText, encryptionKey);
+                Console.WriteLine("Encrypted (b64-encode): {0}", Convert.ToBase64String(encrypted));
+                /*
 
                 //encrypt data
                 MemoryStream encryptionStream = new MemoryStream();
@@ -221,6 +225,46 @@ decryptionStreamBacking.ToArray());
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
               ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
         Console.WriteLine("RunTime " + stopWatch.Elapsed);
+    }
+
+    /*
+     * encrypt(string plainText, byte[] key)
+     * 
+     *  
+    */
+    static byte[] encrypt(string plainText, Rfc2898DeriveBytes encryptedKey) 
+    {
+        byte[] encrypted;
+        byte[] IV;
+
+        using (Aes aes_enc = Aes.Create())
+        {
+            aes_enc.Key = encryptedKey.GetBytes(32);
+            aes_enc.GenerateIV();
+            IV = aes_enc.IV;
+            aes_enc.Mode = CipherMode.CBC;
+            var encryptor = aes_enc.CreateEncryptor(aes_enc.Key, aes_enc.IV);
+
+            using (var msEncrypt = new MemoryStream())
+            {
+                using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                {
+                    using (var swEncrypt = new StreamWriter(csEncrypt))
+                    {
+                        //Write all data to the stream.
+                        swEncrypt.Write(plainText);
+                    }
+                    encrypted = msEncrypt.ToArray();
+                }
+            }
+        }
+
+        var combinedIvCt = new byte[IV.Length + encrypted.Length];
+        Array.Copy(IV, 0, combinedIvCt, 0, IV.Length);
+        Array.Copy(encrypted, 0, combinedIvCt, IV.Length, encrypted.Length);
+
+        // Return the encrypted bytes from the memory stream. 
+        return combinedIvCt;
     }
 }
 

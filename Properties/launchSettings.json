@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "encrypt_utility": {
+      "commandName": "Project",
+      "commandLineArgs": "1234password"
+    }
+  }
+}
