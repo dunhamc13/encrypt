@@ -1,4 +1,57 @@
-﻿using System;
+﻿/* 
+ * This code is largerly derived from the microsoft documentation on rfc2898
+ * https://docs.microsoft.com/en-us/dotnet/api/
+ *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
+ * 
+/* Notes About File
+ * @File: driver.cs
+ * @Name: Christian Dunham
+ * @Number: 1978955
+ * @Date: 12Apr2021
+ * @Program Name:  pbkdf2
+ *
+ * Program Purpose:
+ *    This program implements a multi-threaded client server program that uses
+ *    TCP sockets to evaluate reads and writes made by the system.
+ *
+ * Design Rational:  
+ *    One decision was xyz.... because....  
+ *
+ * Dynamic Memory:
+ *    The only dynamic memory comes from the socket API and taken care of in
+ *    the server code. Testing VS change git.
+ *
+ *******************************************************************************
+ *******************************************************************************
+ *
+ *                        Special Cases Identified
+ * : connection errors : Check and send message to console
+ *
+ *******************************************************************************
+ *
+ *******************************************************************************
+ *Product BackLog :
+ *                 1) xyz
+ *
+ *******************************************************************************
+ *
+ *******************************************************************************
+ * Code Outline :
+ *
+ *                       Client : Program
+ *              
+ *                              : Section 1  : Glbl Var & Functions
+ *
+ *                              : Section 2  : main()
+ *
+ ******************************************************************************* 
+ *
+ *                        Included Libraries
+ *
+ *******************************************************************************
+ *******************************************************************************
+*/
+using System;
 using System.IO;
 using System.Text;
 using System.Security.Cryptography; //For rfc2898
@@ -31,6 +84,11 @@ namespace encrypt_utility
             // Declare variables needed for data file to encrypt and output enctrypted file
             string dataFile;
             string signedFile;
+            string hash_algorithm = null;
+            byte[] encrypted_DataToDecrypt = null;
+            string pwd1 = null;
+            byte[] salt1 = null;
+            int myIterations = 0;
 
 
             //First get arguments for password encyrption algorithm, iterations, and file to encrypt
@@ -44,9 +102,9 @@ namespace encrypt_utility
             else
             {
                 //create vars for functions that create keys
-                string pwd1 = args[0];                       //password for master key
-                string hash_algorithm = args[1];             //hash algorithm to use
-                int myIterations = Convert.ToInt32(args[2]); //number of iterations for master key
+                pwd1 = args[0];                       //password for master key
+                hash_algorithm = args[1];             //hash algorithm to use
+                myIterations = Convert.ToInt32(args[2]); //number of iterations for master key
                 dataFile = args[3];
 
                 /* !USAGE
@@ -76,7 +134,7 @@ namespace encrypt_utility
                 }//end if file doesn't exist
 
                 //Create a byte array to hold the random value for master key salt - must be 8 bytes
-                byte[] salt1 = new byte[8];
+                salt1 = new byte[8];
 
                 //Use CryptoService to generate random bytes for salt
                 using (RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider())
@@ -148,10 +206,12 @@ namespace encrypt_utility
                     string metaData_string = hash_algorithm + "+" + myIterations;
                     byte[] metaData = Encoding.ASCII.GetBytes(metaData_string);
                     byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
+                    Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
                     byte[] encrypted = rfc2898key.encrypt(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
+                    encrypted_DataToDecrypt = encrypted;
                     // Encryption Complete Statement
                     Console.WriteLine("\n++++++++++ Encryption Complete ++++++++++++");
-                    Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted));
+                    Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
                 }//end try to encrypt
 
                 //must have had an error
@@ -169,6 +229,13 @@ namespace encrypt_utility
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
                   ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
             Console.WriteLine("RunTime " + stopWatch.Elapsed);
+
+            // Decrypt
+            Console.WriteLine("\n\n+++++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("++++++++++++ Decryption +++++++++++++");
+            byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations);
+            string str = Convert.ToBase64String(dectrypted);
+            Console.WriteLine(str);
         }//end main
     }
 }
