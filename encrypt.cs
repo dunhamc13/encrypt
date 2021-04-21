@@ -3,8 +3,6 @@
  * https://docs.microsoft.com/en-us/dotnet/api/
  *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
  * 
- */
-
 /* Notes About File
  * @File: pbkdf2.cs
  * @Name: Christian Dunham
@@ -63,227 +61,29 @@ using System.Diagnostics; //For timer
 
 public class rfc2898key
 {
-    // Generate a key k1 with password pwd1 and salt salt1.
-    // Encrypt data1 with key k1 using symmetric encryption, creating edata1.
-    // Decrypt edata1 with key k2 using symmetric decryption, creating data2.
-    // data2 should equal data1.
-
-    private const string usageText = "Usage: RFC2898 <password>\nYou must specify the password for encryption.\n";
-    public static void Main(string[] passwordargs)
-    {
-        //Implement timer for diagnostics
-        //Code modified from https://docs.microsoft.com/en-us/dotnet/
-        //         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
-        Stopwatch stopWatch = new Stopwatch();
-        stopWatch.Start();
-        string dataFile;
-        string signedFile;
-
-        //if using VS this will place files in the main repo folder
-        //else change path to desired location
-        dataFile = @"..\..\..\text.txt";
-        //If no file name is specified, write usage text.
-        if (passwordargs.Length == 0)
-        {
-            Console.WriteLine(usageText);
-        }
-        else
-        {
-            string pwd1 = passwordargs[0];
-            string plainText = "This is the plaintext to encrypt test.";
-
-            //Create a byte array to hold the random value.
-            byte[] salt1 = new byte[8];
-
-            //Use CryptoService to generate random bytes for salt
-            using (RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider())
-            {
-                // Fill the array with a random value.
-                rngCsp.GetBytes(salt1);
-            }
-
-            //data1 can be a string or contents of a file.
-            //TODO: needs to be a file some how
-            string data1 = "Some test data";
-            //The default iteration count is 1000 so the two methods use the same iteration count.
-            int myIterations = 1000000;
-            try
-            {
-                /*
-                 * 1. Create a master key using PBKDF#2
-                 * The rfc2898DeriveBytes function from the .NET Cryptography.Security
-                 * takes a password, salt, number of iterations, and algorith
-                 * to create the master key.
-                 * pwd1: the password to encrypt
-                 * salt1: a set of at least 8 bytes
-                 * myIterations: number of iterations (at least 1000)
-                 * HashAlgorithmName: hashing algorithm - see 
-                 *       https://docs.microsoft.com/en-us/dotnet/api/
-                 *       system.security.cryptography.hashalgorithmname?
-                 *       view=net-5.0
-                 *       For more information
-                 * output: k1: a master key from arguments
-                 * TODO import time api and test different iterations
-                */
-
-
-                //Make master key object
-                Rfc2898DeriveBytes masterKey_Obj = new Rfc2898DeriveBytes
-                    (pwd1, salt1, myIterations, HashAlgorithmName.SHA256);
-
-
-
-                //Use rfc2898 object to make master key
-                byte[] masterKey_Bytes = masterKey_Obj.GetBytes(32);
-
-                /*
-                 * 2. Create encryption key and hmac key
-                 * Once we have an rfc2898 generated master key we use it 
-                 * to derive the keys, but change the salt and iterations.
-                 * masterKey_Bytes: the password to encrypt
-                 * salt2/3: unique to each key needs to be at least 8 bytes
-                 * numIter: number of iterations set to 1 as per specificaition
-                 * HashAlgorithmName: hashing algorithm - see 
-                 *       https://docs.microsoft.com/en-us/dotnet/api/
-                 *       system.security.cryptography.hashalgorithmname?
-                 *       view=net-5.0
-                 *       For more information
-                 * output: encryptionKey/HMAC_Key: a master key from arguments
-                 */
-
-                //Encryption Key Creation
-                string encryptionSalt_String = "I am the Encryption Key";
-                int numIter = 1;
-                byte[] salt2 = Encoding.ASCII.GetBytes(encryptionSalt_String);
-                Rfc2898DeriveBytes encryptionKey = new Rfc2898DeriveBytes
-                   (masterKey_Bytes, salt2, numIter, HashAlgorithmName.SHA256);
-
-                //HMAC Key Creation
-                string HMAC_Salt_String = "I am the HMAC Key";
-                byte[] salt3 = Encoding.ASCII.GetBytes(HMAC_Salt_String);
-                Rfc2898DeriveBytes HMAC_Key = new Rfc2898DeriveBytes
-                   (masterKey_Bytes, salt3, numIter, HashAlgorithmName.SHA256);
-
-                /*
-                 * 3. Encrypt data using CBC chaining mode
-                 * Must work with 3DES, AES128, AES256
-                 * Use random IV that is one block size
-                 * Do not assume block size
-                 * output: 
-                 */
-                byte[] encrypted = encrypt(plainText, encryptionKey);
-                Console.WriteLine("Encrypted (b64-encode): {0}", Convert.ToBase64String(encrypted));
-                
-                // UTF conversion - String from bytes for HMAC_Signature  
-                string utfString = Encoding.UTF8.GetString(encrypted, 0, encrypted.Length);
-                string b64 = Convert.ToBase64String(encrypted);
-                //Console.WriteLine(utfString);
-                Console.WriteLine(b64);
-
-                // Create a file to write to.
-                using (StreamWriter sw = File.CreateText(dataFile))
-                {
-                    //sw.WriteLine(utfString);
-                    sw.WriteLine(b64);
-                }
-                signedFile = @"..\..\..\signedFile.enc";
-                Console.WriteLine(signedFile);
-
-                /*
-                 * 4. Create HMAC of the IV and encrypted data
-                 * output: 
-                */
-                HMAC_Signature(HMAC_Key, dataFile, signedFile);
-                // Open the stream and read it back.    
-                Console.WriteLine("Opening HMAC File");
-                using (StreamReader sr = File.OpenText(signedFile))
-                {
-                    string s = "";
-                    while ((s = sr.ReadLine()) != null)
-                    {
-                        Console.WriteLine(s);
-                    }
-                }
-              
-                /*
-
-                //encrypt data
-                MemoryStream encryptionStream = new MemoryStream();
-                CryptoStream encrypt = new CryptoStream(encryptionStream,
-encryptedKey.CreateEncryptor(), CryptoStreamMode.Write);
-                byte[] utfD1 = new System.Text.UTF8Encoding(false).GetBytes(
-data1);
-
-                encrypt.Write(utfD1, 0, utfD1.Length);
-                encrypt.FlushFinalBlock();
-                encrypt.Close();
-                byte[] edata1 = encryptionStream.ToArray();
-                Console.WriteLine(Convert.ToBase64String(edata1));
-                */
-
-                //k1.Reset();
-
-                //Rfc2898DeriveBytes encryptKey = masterKey.CryptDeriveKey("AES","SHA256",256,encAlg.IV);
-
-                /*
-                // Try to decrypt, thus showing it can be round-tripped.
-                Aes decAlg = Aes.Create();
-                decAlg.Key = k2.GetBytes(32);
-                decAlg.IV = encAlg.IV;
-                MemoryStream decryptionStreamBacking = new MemoryStream();
-                CryptoStream decrypt = new CryptoStream(
-decryptionStreamBacking, decAlg.CreateDecryptor(), CryptoStreamMode.Write);
-                decrypt.Write(edata1, 0, edata1.Length);
-                decrypt.Flush();
-                decrypt.Close();
-                k2.Reset();
-                string data2 = new UTF8Encoding(false).GetString(
-decryptionStreamBacking.ToArray());
-
-                if (!data1.Equals(data2))
-                {
-                    Console.WriteLine("Error: The two values are not equal.");
-                }
-                else
-                {
-                    Console.WriteLine("The two values are equal.");
-                    Console.WriteLine("k1 iterations: {0}", k1.IterationCount);
-                    Console.WriteLine("k2 iterations: {0}", k2.IterationCount);
-                }
-                */
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error: {0}", e);
-            }
-        }
-        //Get time
-        stopWatch.Stop();
-        TimeSpan ts = stopWatch.Elapsed;
-        string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-              ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
-        Console.WriteLine("RunTime " + stopWatch.Elapsed);
-    }
+   
 
     /*
-     * encrypt(string plainText, byte[] key)
+     * encrypt(byte[] dataToEncrypt, byte[] key, byte[] metaData, byte[] hmac_key, string signedFile)
      * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
      *                              system.security.cryptography.aes?view=netframework-4.8
-     *  
+     * output: []byte : dataStruct : [metadata][hmac][iv][encrypted data]
     */
-    static byte[] encrypt(string plainText, Rfc2898DeriveBytes encryptedKey) 
+    public static byte[] encrypt(byte[] dataToEncrypt, byte[] encryptedKey, byte[] metaData, byte[] HMAC_key, string signedFile) 
     {
+        //varaibles for enctrypted data and iv
         byte[] encrypted;
         byte[] IV;
 
+        //Use AES to create encryption
         using (Aes aes_enc = Aes.Create())
         {
-            aes_enc.Key = encryptedKey.GetBytes(32);
-            aes_enc.GenerateIV();
+            aes_enc.Key = encryptedKey;
+            aes_enc.GenerateIV();                    //for random IV
             IV = aes_enc.IV;
-            aes_enc.Mode = CipherMode.CBC;
+            aes_enc.Mode = CipherMode.CBC;           //for CBC mode
             var encryptor = aes_enc.CreateEncryptor(aes_enc.Key, aes_enc.IV);
-
+            //use memory stream to encrypt data
             using (var msEncrypt = new MemoryStream())
             {
                 using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
@@ -291,64 +91,110 @@ decryptionStreamBacking.ToArray());
                     using (var swEncrypt = new StreamWriter(csEncrypt))
                     {
                         //Write all data to the stream.
-                        swEncrypt.Write(plainText);
-                    }
+                        swEncrypt.Write(dataToEncrypt);
+                    }//end write stream
                     encrypted = msEncrypt.ToArray();
-                }
-            }
-        }
+                }//end cryptostream
+            }//end memory stream
+        }//end aes encrypt
 
-        var combinedIvCt = new byte[IV.Length + encrypted.Length];
-        Array.Copy(IV, 0, combinedIvCt, 0, IV.Length);
-        Array.Copy(encrypted, 0, combinedIvCt, IV.Length, encrypted.Length);
+        //Combine IV and encrypted bytes to compute hash
+        var combinedIvEncrypted = new byte[IV.Length + encrypted.Length];
+        Array.Copy(IV, 0, combinedIvEncrypted, 0, IV.Length);
+        Array.Copy(encrypted, 0, combinedIvEncrypted, IV.Length, encrypted.Length);
+        byte[] mac = HMAC_Signature(HMAC_key, combinedIvEncrypted);
+
+        /*
+          * 4. Create HMAC of the IV and encrypted data
+        */
+        var dataStruct = new byte[metaData.Length + mac.Length + IV.Length + encrypted.Length];
+        Array.Copy(metaData, 0, dataStruct, 0, metaData.Length);
+        Array.Copy(mac, 0, dataStruct, metaData.Length + metaData.Length, mac.Length);
+        Array.Copy(IV, 0, dataStruct, metaData.Length + mac.Length, IV.Length);
+        Array.Copy(encrypted, 0, dataStruct, metaData.Length + mac.Length + IV.Length, encrypted.Length);
+
+        //Write encrypted structure to file
+        File.WriteAllBytes(signedFile, dataStruct);
 
         // Return the encrypted bytes from the memory stream. 
-        return combinedIvCt;
-    }
+        return dataStruct;
+    }//end encrypt
 
-    // Computes a keyed hash for a source file and creates a target file with the keyed hash
-    // prepended to the contents of the source file.
-    /*
- * HMAC_Signature(string plainText, byte[] key)
- * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
- *                              system.security.cryptography.hmacsha512?view=net-5.0
- *  
+/*
+  * HMAC_Signature(byte[] key, byte[] sourceFile)
+  * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
+  *                              system.security.cryptography.hmacsha512?view=net-5.0  
+  * output : byte[] hashValue : hash value from the hmac key covering the IV and Enctrypted dat
 */
-    public static void HMAC_Signature(Rfc2898DeriveBytes key, String sourceFile, String destFile)
+    public static byte[] HMAC_Signature(byte[] key, byte[] sourceFile)
     {
  
-            byte[] Hmac_Key = key.GetBytes(32);
+        //variables for returning hash and the hmac key from hmac object
+        byte[] hashValue;
 
-            // Initialize the keyed hash object.
-            using (HMACSHA512 hmac = new HMACSHA512(Hmac_Key))
+        // Initialize the keyed hash object.
+        using (HMACSHA512 hmac = new HMACSHA512(key))
         {
-            using (FileStream inStream = new FileStream(sourceFile, FileMode.Open))
-            {
-                using (FileStream outStream = new FileStream(destFile, FileMode.Create))
-                {
-                    // Compute the hash of the input file.
-                    byte[] hashValue = hmac.ComputeHash(inStream);
-                    Console.WriteLine("hashValue: {0}", Convert.ToBase64String(hashValue));
-                    // Reset inStream to the beginning of the file.
-                    inStream.Position = 0;
-                    // Write the computed hash value to the output file.
-                    outStream.Write(hashValue, 0, hashValue.Length);
-                    // Copy the contents of the sourceFile to the destFile.
-                    int bytesRead;
-                    // read 1K at a time
-                    byte[] buffer = new byte[1024];
-                    do
-                    {
-                        // Read from the wrapping CryptoStream.
-                        bytesRead = inStream.Read(buffer, 0, 1024);
-                        outStream.Write(buffer, 0, bytesRead);
-                    } while (bytesRead > 0);
-
-                }
-
-            }
+            // Compute the hash of the input file.
+            // HMAC Statement
+            Console.WriteLine("\n++++++++++++ Generating HMAC ++++++++++++++");
+            hashValue = hmac.ComputeHash(sourceFile);
+            Console.WriteLine("HMAC (b64-encode): {0}", Convert.ToBase64String(hashValue), "\n\n");
         }
-        return;
-    } // end SignFile
-}
+        return hashValue;
+    } // end HMAC_Signature
+
+    /*
+     * decrypt(byte[] dataToEncrypt, byte[] key, byte[] metaData, byte[] hmac_key, string signedFile)
+     * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
+     *                              system.security.cryptography.aes?view=netframework-4.8
+     * output: []byte : dataStruct : [metadata][hmac][iv][encrypted data]
+*/
+    static string DecryptStringFromBytes_Aes(byte[] cipherTextCombined, byte[] Key)
+    {
+
+        // Declare the string used to hold 
+        // the decrypted text. 
+        string plaintext = null;
+
+        // Create an Aes object 
+        // with the specified key and IV. 
+        using (Aes aesAlg = Aes.Create())
+        {
+            aesAlg.Key = Key;
+
+            byte[] IV = new byte[aesAlg.BlockSize / 8];
+            byte[] cipherText = new byte[cipherTextCombined.Length - IV.Length];
+
+            Array.Copy(cipherTextCombined, IV, IV.Length);
+            Array.Copy(cipherTextCombined, IV.Length, cipherText, 0, cipherText.Length);
+
+            aesAlg.IV = IV;
+
+            aesAlg.Mode = CipherMode.CBC;
+
+            // Create a decrytor to perform the stream transform.
+            ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+            // Create the streams used for decryption. 
+            using (var msDecrypt = new MemoryStream(cipherText))
+            {
+                using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                {
+                    using (var srDecrypt = new StreamReader(csDecrypt))
+                    {
+
+                        // Read the decrypted bytes from the decrypting stream
+                        // and place them in a string.
+                        plaintext = srDecrypt.ReadToEnd();
+                    }
+                }
+            }
+
+        }
+
+        return plaintext;
+
+    }
+}//end class
 
