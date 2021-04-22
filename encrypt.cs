@@ -20,16 +20,18 @@ public class rfc2898key
     public static byte[] encrypt(byte[] dataToEncrypt, byte[] encryptedKey, byte[] metaData, byte[] HMAC_key, string signedFile) 
     {
         //varaibles for enctrypted data and iv
-        byte[] encrypted;
+        byte[] encrypted = new byte[dataToEncrypt.Length];
         byte[] IV;
-
+        Console.WriteLine("Stubbing original input {0} length {1}", Convert.ToBase64String(dataToEncrypt), dataToEncrypt.Length);
         //Use AES to create encryption
         using (Aes aes_enc = Aes.Create())
         {
+            aes_enc.Mode = CipherMode.CBC;           //for CBC mode
             aes_enc.Key = encryptedKey;
-            aes_enc.Padding = PaddingMode.Zeros;
+            aes_enc.Padding = PaddingMode.PKCS7;
             aes_enc.GenerateIV();                    //for random IV
             IV = aes_enc.IV;
+            Console.WriteLine("Stubbing input IV {0}", Convert.ToBase64String(IV));
             aes_enc.Mode = CipherMode.CBC;           //for CBC mode
             var encryptor = aes_enc.CreateEncryptor(aes_enc.Key, aes_enc.IV);
             //use memory stream to encrypt data
@@ -37,13 +39,20 @@ public class rfc2898key
             {
                 using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
                 {
+                    csEncrypt.Write(dataToEncrypt, 0, dataToEncrypt.Length);
+                    csEncrypt.Close();
+                    /*
                     using (var swEncrypt = new StreamWriter(csEncrypt))
                     {
                         //Write all data to the stream.
                         swEncrypt.Write(dataToEncrypt);
                     }//end write stream
+                    
                     encrypted = msEncrypt.ToArray();
+                    */
                 }//end cryptostream
+
+                encrypted = msEncrypt.ToArray();
             }//end memory stream
         }//end aes encrypt
 
@@ -53,6 +62,7 @@ public class rfc2898key
         Array.Copy(encrypted, 0, combinedIvEncrypted, IV.Length, encrypted.Length);
         byte[] mac = HMAC_Gen.HMAC_Signature(HMAC_key, combinedIvEncrypted);
         Console.WriteLine("Stub Mac initial: {0}", Convert.ToBase64String(mac));
+        Console.WriteLine("Stubbing output encryptedData {0}", Convert.ToBase64String(encrypted));
 
         /*
           * 4. Create HMAC of the IV and encrypted data

@@ -3,29 +3,27 @@
  * https://docs.microsoft.com/en-us/dotnet/api/
  *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
  * 
-/* Notes About File
+ * Notes About File
  * @File: driver.cs
  * @Name: Christian Dunham
  * @Number: 1978955
  * @Date: 12Apr2021
- * @Program Name:  pbkdf2
+ * @Program Name:  encryption_utility
  *
  * Program Purpose:
- *    This program implements a multi-threaded client server program that uses
- *    TCP sockets to evaluate reads and writes made by the system.
+ *    This program implements an encryption utility for a windows based system
  *
  * Design Rational:  
  *    One decision was xyz.... because....  
  *
  * Dynamic Memory:
- *    The only dynamic memory comes from the socket API and taken care of in
- *    the server code. Testing VS change git.
+ *    Use of higher level language omitted memory maintainance
  *
  *******************************************************************************
  *******************************************************************************
  *
  *                        Special Cases Identified
- * : connection errors : Check and send message to console
+ * : Jpg : 
  *
  *******************************************************************************
  *
@@ -62,13 +60,13 @@ namespace encrypt_utility
     class driver
     {
         /*
-     1. Generate a master key || Km = KDF(password, iteration count, hashing alg, salt)
-     2. Generate an encryption key || Ke = KDF(Km, iteration count = 1, hashing alg, “Encryption key”)
-     3. Generate a HMAC key || Kh = KDF(Km, iteration count = 1, hashing alg, “HMAC key”)
-     4. Generate a random IV(initialization vector)
-     5. Encrypt your data with Ke and IV 
-     6. Create an HMAC with Kh, covering both IV and encrypted data
-   */
+         1. Generate a master key || Km = KDF(password, iteration count, hashing alg, salt)
+         2. Generate an encryption key || Ke = KDF(Km, iteration count = 1, hashing alg, “Encryption key”)
+         3. Generate a HMAC key || Kh = KDF(Km, iteration count = 1, hashing alg, “HMAC key”)
+         4. Generate a random IV(initialization vector)
+         5. Encrypt your data with Ke and IV 
+         6. Create an HMAC with Kh, covering both IV and encrypted data
+       */
         private const string usageText = "Usage: RFC2898 [password] [algorithm] [iterations] [file to encrypt]\n";
         public static void Main(string[] args)
         {
@@ -205,7 +203,8 @@ namespace encrypt_utility
                     Console.WriteLine("Initiating Enctryption:");
                     string metaData_string = hash_algorithm + "+" + myIterations;
                     byte[] metaData = Encoding.ASCII.GetBytes(metaData_string);
-                    byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
+                    byte[] dataToEncrypt = FileToByteArray(dataFile);
+                    //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
                     Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
                     byte[] encrypted = rfc2898key.encrypt(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
                     encrypted_DataToDecrypt = encrypted;
@@ -234,7 +233,22 @@ namespace encrypt_utility
             Console.WriteLine("\n\n+++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("++++++++++++ Decryption +++++++++++++");
             byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations);
+
             Console.WriteLine("Decrypted Bytes (b64-encode): {0}",Convert.ToBase64String(dectrypted));
         }//end main
+
+        public static byte[] FileToByteArray(string fileName)
+        {
+            byte[] fileData = null;
+
+            using (FileStream fs = File.OpenRead(fileName))
+            {
+                using (BinaryReader binaryReader = new BinaryReader(fs))
+                {
+                    fileData = binaryReader.ReadBytes((int)fs.Length);
+                }
+            }
+            return fileData;
+        }
     }
 }

@@ -23,38 +23,70 @@ namespace encrypt_utility
             // Declare the string used to hold 
             // the decrypted text. 
             //string plaintext = null;
-            byte[] decrypted;
+            byte[] decrypted = new byte[160];
+
 
             // Create an Aes object 
             // with the specified key and IV. 
-            using (Aes aesAlg = Aes.Create())
+            using (Aes decAlg = Aes.Create())
             {
                 KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations);
-                aesAlg.Key = keyGen_Master.MasterKey;
+                decAlg.Key = keyGen_Master.MasterKey;
                 byte[] HMAC_Key = keyGen_Master.HMACKey;
-                aesAlg.Padding = PaddingMode.Zeros;
+                byte[] enc_Key = keyGen_Master.EncryptionKey;
+                decAlg.Padding = PaddingMode.PKCS7;
 
-                byte[] IV = new byte[aesAlg.BlockSize / 8];
-                byte[] encryptedData = new byte[dataStructure.Length - IV.Length - 11 - 64];
+                byte[] IV = new byte[decAlg.BlockSize / 8];
+                byte[] encryptedData = new byte[160];
                 byte[] storedHMAC = new byte[64];
-                byte[] combinedIVEncrypted = new byte[32];
+                byte[] combinedIVEncrypted = new byte[176];
 
-                Array.Copy(dataStructure, dataStructure.Length - 32, IV, 0, IV.Length);
-                Array.Copy(dataStructure, dataStructure.Length - 16, encryptedData, 0, encryptedData.Length);
-                Array.Copy(dataStructure, dataStructure.Length - 32, combinedIVEncrypted, 0, combinedIVEncrypted.Length);
+                Array.Copy(dataStructure, dataStructure.Length - 176, IV, 0, IV.Length);
+                Array.Copy(dataStructure, dataStructure.Length - 160, encryptedData, 0, encryptedData.Length);
+                Array.Copy(dataStructure, dataStructure.Length - 176, combinedIVEncrypted, 0, combinedIVEncrypted.Length);
                 Array.Copy(dataStructure,11, storedHMAC, 0, storedHMAC.Length);
+
 
                 //verify signature
                 verifyHMAC(HMAC_Key, storedHMAC, combinedIVEncrypted);
-                aesAlg.IV = IV;
-                aesAlg.Mode = CipherMode.CBC;
+                decAlg.IV = IV;
+                decAlg.Mode = CipherMode.CBC;
+                Console.WriteLine("Stubbing output IV {0}", Convert.ToBase64String(IV));
+                Console.WriteLine("Stubbing output encryptedData {0}", Convert.ToBase64String(encryptedData));
 
-                using (var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV))
+           
+              
+                using (var decryptor = decAlg.CreateDecryptor(enc_Key, decAlg.IV))
                 {
-                    decrypted = use_crypto(encryptedData, decryptor);
+                    using (MemoryStream ms = new MemoryStream(encryptedData))
+                    {
+                        //was  var rigth there and mode.Read
+                        using (var cryptoStream = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                        {
+
+                            //cryptoStream.Write(encryptedData, 0, encryptedData.Length);
+                            //cryptoStream.Close();
+
+                            cryptoStream.Read(decrypted, 0, decrypted.Length);
+                            cryptoStream.Close();
+                            
+                            
+                            //var bytesRead = cryptoStream.Read(decrypted, 0, encryptedData.Length);
+                            //decrypted = decrypted.Take(bytesRead).ToArray();
+                            //Console.WriteLine("Stubbing output dencryptedData {0}", Convert.ToBase64String(decrypted));
+
+                        }
+                        ms.Close();
+                        //decrypted = ms.ToArray();
+                        //Console.WriteLine("Stubbing output dencryptedData {0}", Convert.ToBase64String(decrypted));
+
+                    }
+                    //decrypted = use_crypto(encryptedData, decryptor);
                 }
             }
-            return decrypted;
+            byte[] trimmed = new byte[146];
+            Array.Copy(decrypted, 0, trimmed, 0, trimmed.Length);
+            return trimmed;
         }
 
         public static byte[] use_crypto(byte[] encryptedData, ICryptoTransform cryptoTransform)
