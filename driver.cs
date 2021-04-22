@@ -1,8 +1,4 @@
 ﻿/* 
- * This code is largerly derived from the microsoft documentation on rfc2898
- * https://docs.microsoft.com/en-us/dotnet/api/
- *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
- * 
  * Notes About File
  * @File: driver.cs
  * @Name: Christian Dunham
@@ -11,13 +7,11 @@
  * @Program Name:  encryption_utility
  *
  * Program Purpose:
- *    This program implements an encryption utility for a windows based system
+ *    This program implements an encryption utility for a windows based system.
+ *    This program is the driver.  
  *
  * Design Rational:  
  *    One decision was xyz.... because....  
- *
- * Dynamic Memory:
- *    Use of higher level language omitted memory maintainance
  *
  *******************************************************************************
  *******************************************************************************
@@ -59,7 +53,7 @@ namespace encrypt_utility
 {
     class driver
     {
-        /*
+        /* This driver does the following:
          1. Generate a master key || Km = KDF(password, iteration count, hashing alg, salt)
          2. Generate an encryption key || Ke = KDF(Km, iteration count = 1, hashing alg, “Encryption key”)
          3. Generate a HMAC key || Kh = KDF(Km, iteration count = 1, hashing alg, “HMAC key”)
@@ -80,18 +74,24 @@ namespace encrypt_utility
             stopWatch.Start();
 
             // Declare variables needed for data file to encrypt and output enctrypted file
-            string dataFile;
-            string signedFile;
-            string hash_algorithm = null;
-            byte[] encrypted_DataToDecrypt = null;
-            string pwd1 = null;
-            byte[] salt1 = null;
-            int myIterations = 0;
+            string dataFile;                       //file to encrypt
+            string signedFile;                    //file location that is encrypted
+            int keySize = 0;                      //for key algorithm size aes128, aes256, or 3des64
+            int hash_algorithm = 0;               //for encryption hash sha256 or sha512
+            byte[] encrypted_DataToDecrypt = null;  
+            string pwd1 = null;                   //password
+            byte[] salt1 = null;                  //salt for master
+            int myIterations = 0;                 // master iterations
+            int originalDataLength = 0;           //original data length
+            int metaDataLength = 0;               //metadata data length
+            int encryptedDataLength = 0;          //encrypted data length
+            int IVLength = 0;                     //iv length
+            int macLength = 0;                    //mac length
 
 
             //First get arguments for password encyrption algorithm, iterations, and file to encrypt
             //If 4 arguments are not present, write usage text.
-            if (args.Length != 4)
+            if (args.Length != 5)
             {
                 Console.WriteLine(usageText);
             }//end if not 4 args
@@ -101,9 +101,10 @@ namespace encrypt_utility
             {
                 //create vars for functions that create keys
                 pwd1 = args[0];                       //password for master key
-                hash_algorithm = args[1];             //hash algorithm to use
-                myIterations = Convert.ToInt32(args[2]); //number of iterations for master key
-                dataFile = args[3];
+                keySize = Convert.ToInt32(args[1]);   // key size implies aes128, aes256, or 3des64
+                hash_algorithm = Convert.ToInt32(args[2]);             //int 256 or 512 for sha256 and sha512 
+                myIterations = Convert.ToInt32(args[3]); //number of iterations for master key
+                dataFile = args[4];
 
                 /* !USAGE
                  * file to output encrypted data
@@ -121,13 +122,13 @@ namespace encrypt_utility
                 // Check if file exists to enctrypt, else exit
                 if (File.Exists(dataFile))
                 {
-                    Console.WriteLine("The file exists.\n\n");
+                    Console.WriteLine("The file exists.\n");
                 }//end if file exists
 
                 //file must not exist
                 else
                 {
-                    Console.WriteLine("No file to encrypt, exiting\n\n");
+                    Console.WriteLine("No file to encrypt, exiting\n");
                     System.Environment.Exit(1);
                 }//end if file doesn't exist
 
@@ -162,13 +163,9 @@ namespace encrypt_utility
                     Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
                     Console.WriteLine("++++++++++++ Generating Keys ++++++++++++++");
                     Console.WriteLine("Creating Master Key:");
-                    KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations);
+                    KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations, keySize, hash_algorithm);
                     byte[] masterKey_Bytes = keyGen_Master.MasterKey;
-                    /*
-                    Rfc2898DeriveBytes masterKey_Obj = new Rfc2898DeriveBytes
-                        (pwd1, salt1, myIterations, HashAlgorithmName.SHA256);
-                    byte[] masterKey_Bytes = masterKey_Obj.GetBytes(32);
-                    */
+
                     /*
                      * 2. Create encryption key and hmac key
                      * Once we have an rfc2898 generated master key we use it 
@@ -189,6 +186,7 @@ namespace encrypt_utility
                     byte[] encryptionKey_Bytes = keyGen_Master.EncryptionKey;
 
                     //HMAC Key Creation
+                    Console.WriteLine("Creating HMAC Key:\n");
                     byte[] HMACKey_Bytes = keyGen_Master.HMACKey;
 
                     /*
@@ -201,16 +199,29 @@ namespace encrypt_utility
                     Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
                     Console.WriteLine("+++++++++ Encryption Processing +++++++++++");
                     Console.WriteLine("Initiating Enctryption:");
-                    string metaData_string = hash_algorithm + "+" + myIterations;
+                    string EncAlg;
+                    string kSize = keySize.ToString();
+                    if (keySize == 64)
+                        EncAlg = "3DES" + kSize;
+                    else if (keySize == 128)
+                        EncAlg = "AES" + kSize;
+                    else EncAlg = "AES" + kSize;
+                         
+                    string metaData_string = EncAlg + "+" + hash_algorithm + "+" + myIterations;
                     byte[] metaData = Encoding.ASCII.GetBytes(metaData_string);
                     byte[] dataToEncrypt = FileToByteArray(dataFile);
+                    originalDataLength = dataToEncrypt.Length;
                     //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
                     Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
-                    byte[] encrypted = rfc2898key.encrypt(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
+                    Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
+                    metaDataLength = encrypted_Obj.metaDataLength;
+                    encryptedDataLength = encrypted_Obj.encryptedDataLength;
+                    IVLength = encrypted_Obj.IVLength;
+                    byte[] encrypted = encrypted_Obj.encryptedData;
                     encrypted_DataToDecrypt = encrypted;
                     // Encryption Complete Statement
                     Console.WriteLine("\n++++++++++ Encryption Complete ++++++++++++");
-                    Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+                    //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
                 }//end try to encrypt
 
                 //must have had an error
@@ -221,7 +232,7 @@ namespace encrypt_utility
             }//end had all 4 args
 
             // Timing Statement
-            Console.WriteLine("\n\n+++++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("++++++++++++ Calculating Time +++++++++++++");
             stopWatch.Stop();
             TimeSpan ts = stopWatch.Elapsed;
@@ -230,9 +241,9 @@ namespace encrypt_utility
             Console.WriteLine("RunTime " + stopWatch.Elapsed);
 
             // Decrypt
-            Console.WriteLine("\n\n+++++++++++++++++++++++++++++++++++++++++++");
-            Console.WriteLine("++++++++++++ Decryption +++++++++++++");
-            byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations);
+            Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("+++++++++++++++ Decryption ++++++++++++++++");
+            byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations, originalDataLength, metaDataLength, encryptedDataLength, IVLength, macLength, keySize, hash_algorithm);
 
             Console.WriteLine("Decrypted Bytes (b64-encode): {0}",Convert.ToBase64String(dectrypted));
         }//end main

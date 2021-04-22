@@ -2,7 +2,7 @@
   "profiles": {
     "encrypt_utility": {
       "commandName": "Project",
-      "commandLineArgs": "1234password AES128 5000 text.txt"
+      "commandLineArgs": "1234password 128 256 5000 text.txt"
     }
   }
 }

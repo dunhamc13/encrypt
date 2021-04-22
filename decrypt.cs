@@ -1,4 +1,31 @@
-﻿using System;
+﻿/* 
+ * This code is largerly derived from the microsoft documentation on rfc2898
+ * https://docs.microsoft.com/en-us/dotnet/api/
+ *           system.security.cryptography.aes?view=net-5.0
+ * 
+ * Notes About File
+ * @File: decrypt.cs
+ * @Name: Christian Dunham
+ * @Number: 1978955
+ * @Date: 12Apr2021
+ * @Program Name:  encryption_utility
+ *
+ * Program Purpose:
+ *    This program implements an encryption utility for a windows based system.  
+ *    The decrypt class is responsible for decrypting enctrypted byte arrays.
+ *    Additionally, it checks the HMAC signature
+ *
+ *******************************************************************************
+ *******************************************************************************
+ * Code Outline :        
+ *                              : DecryptFromBytes :
+ *                              : VerifyHMAC :
+ ******************************************************************************* 
+ *                        Included Libraries
+ *******************************************************************************
+ *******************************************************************************
+*/
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,125 +37,112 @@ namespace encrypt_utility
 {
     class decrypt
     {
-
         /*
-         * decrypt(byte[] dataToEncrypt, string passwrod)
+         * DecryptFromBytes(byte[] dataStructure, string pwd1, byte[] salt1, int myIterations)
          * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
          *                              system.security.cryptography.aes?view=netframework-4.8
-         * output: []byte : dataStruct : [metadata][hmac][iv][encrypted data]
-    */
-        public static byte[] DecryptFromBytes(byte[] dataStructure, string pwd1, byte[] salt1, int myIterations)
+         * dataStructure : dataStruct : [metadata][hmac][iv][encrypted data]
+         * pwd1 : the password from user
+         * salt1 : random 8 bytes for master key
+         * myIterations : num iterations from user
+         * originalDataLength : data length before encryption to fix padding
+         * output: []byte : trimmedDecrypted byte array  [ must trim due to padding ]
+        */
+        public static byte[] DecryptFromBytes(byte[] dataStructure, string pwd1, byte[] salt1, int myIterations, int originalDataLength, int metaDataLength, int encryptedDataLength, int IVLength, int macLength,int keySize, int hashAlgorithm)
         {
 
-            // Declare the string used to hold 
-            // the decrypted text. 
-            //string plaintext = null;
+            // variables to return
             byte[] decrypted = new byte[160];
 
 
-            // Create an Aes object 
-            // with the specified key and IV. 
+            // Create an Aes object with the specified key and IV. 
             using (Aes decAlg = Aes.Create())
             {
-                KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations);
+                KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations, keySize, hashAlgorithm);
                 decAlg.Key = keyGen_Master.MasterKey;
                 byte[] HMAC_Key = keyGen_Master.HMACKey;
                 byte[] enc_Key = keyGen_Master.EncryptionKey;
                 decAlg.Padding = PaddingMode.PKCS7;
 
+                // Create byte arrays to parse out data
+                byte[] metaData = new byte[metaDataLength];
                 byte[] IV = new byte[decAlg.BlockSize / 8];
-                byte[] encryptedData = new byte[160];
-                byte[] storedHMAC = new byte[64];
-                byte[] combinedIVEncrypted = new byte[176];
+                byte[] encryptedData = new byte[encryptedDataLength];
+                byte[] storedHMAC = new byte[macLength];
+                byte[] combinedIVEncrypted = new byte[encryptedDataLength + IVLength];
 
-                Array.Copy(dataStructure, dataStructure.Length - 176, IV, 0, IV.Length);
-                Array.Copy(dataStructure, dataStructure.Length - 160, encryptedData, 0, encryptedData.Length);
-                Array.Copy(dataStructure, dataStructure.Length - 176, combinedIVEncrypted, 0, combinedIVEncrypted.Length);
-                Array.Copy(dataStructure,11, storedHMAC, 0, storedHMAC.Length);
-
+                // Copy data to arrays
+                Array.Copy(dataStructure, 0, metaData, 0, metaData.Length);
+                Array.Copy(dataStructure, dataStructure.Length - encryptedDataLength - IVLength, IV, 0, IV.Length);
+                Array.Copy(dataStructure, dataStructure.Length - encryptedDataLength, encryptedData, 0, encryptedData.Length);
+                Array.Copy(dataStructure, dataStructure.Length - encryptedDataLength - IVLength, combinedIVEncrypted, 0, combinedIVEncrypted.Length);
+                Array.Copy(dataStructure, metaDataLength, storedHMAC, 0, storedHMAC.Length);
 
                 //verify signature
                 verifyHMAC(HMAC_Key, storedHMAC, combinedIVEncrypted);
+
+                // STUB FOR GRADING AND VERIFICAITON TODO: DELETE
+                Console.WriteLine("Metadata is {0}", Encoding.UTF8.GetString(metaData));
+                Console.WriteLine("Parsed Decrypt IV {0}", Convert.ToBase64String(IV));
+                //Console.WriteLine("Stubbing output encryptedData {0}", Convert.ToBase64String(encryptedData));
+
+                //Use Streams to encrypt  
+                //TODO : moving cipher mode up causes decrypt difference.. find out why
                 decAlg.IV = IV;
                 decAlg.Mode = CipherMode.CBC;
-                Console.WriteLine("Stubbing output IV {0}", Convert.ToBase64String(IV));
-                Console.WriteLine("Stubbing output encryptedData {0}", Convert.ToBase64String(encryptedData));
-
-           
-              
                 using (var decryptor = decAlg.CreateDecryptor(enc_Key, decAlg.IV))
                 {
                     using (MemoryStream ms = new MemoryStream(encryptedData))
                     {
-                        //was  var rigth there and mode.Read
                         using (var cryptoStream = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
                         {
-
-                            //cryptoStream.Write(encryptedData, 0, encryptedData.Length);
-                            //cryptoStream.Close();
-
                             cryptoStream.Read(decrypted, 0, decrypted.Length);
                             cryptoStream.Close();
-                            
-                            
-                            //var bytesRead = cryptoStream.Read(decrypted, 0, encryptedData.Length);
-                            //decrypted = decrypted.Take(bytesRead).ToArray();
-                            //Console.WriteLine("Stubbing output dencryptedData {0}", Convert.ToBase64String(decrypted));
-
-                        }
+                        }//end cryptostream
                         ms.Close();
-                        //decrypted = ms.ToArray();
-                        //Console.WriteLine("Stubbing output dencryptedData {0}", Convert.ToBase64String(decrypted));
-
-                    }
-                    //decrypted = use_crypto(encryptedData, decryptor);
-                }
-            }
-            byte[] trimmed = new byte[146];
+                    }//end memory stream
+                }//end decryptor
+            }//end aes decryption key
+            //must trim due to padding
+            byte[] trimmed = new byte[originalDataLength];
             Array.Copy(decrypted, 0, trimmed, 0, trimmed.Length);
             return trimmed;
-        }
+        }//end decrpypt from bytes
 
-        public static byte[] use_crypto(byte[] encryptedData, ICryptoTransform cryptoTransform)
-        {
-            using (var memStream = new MemoryStream())
-            using (var cryptoStream = new CryptoStream(memStream, cryptoTransform, CryptoStreamMode.Write))
-            {
-                cryptoStream.Write(encryptedData, 0, encryptedData.Length);
-                cryptoStream.FlushFinalBlock();
-
-                return memStream.ToArray();
-            }
-        }
-
-        // compare the data has not been tampered with.
+        /*
+         * verifyHMAC(byte[] key, byte[] storedHMAC, byte[] combinedData)
+         * Code here modified from: https://docs.microsoft.com/en-us/dotnet/api/
+         *                              system.security.cryptography.aes?view=netframework-4.8
+         * key : the encryption key
+         * storeHMAC : the parsed hmac from before to compare for hack
+         * combinedData : IV and encrypted data
+         * output: hacked : true or false
+        */
         public static bool verifyHMAC(byte[] key, byte[] storedHMAC, byte[] combinedData)
         {
             bool hacked = false;
             // Initialize the keyed hash object.
             byte[] computedHash = HMAC_Gen.HMAC_Signature(key, combinedData);
-            Console.WriteLine("Stub 2.a verify check storedHMAC {0}", Convert.ToBase64String(storedHMAC));
-            Console.WriteLine("Stub 2.b verify check computedHa {0}", Convert.ToBase64String(computedHash));
 
-            Console.WriteLine("Stored Length {0} computed length {1}", storedHMAC.Length, computedHash.Length);
-
+            //loop through size of hash
             for (int i = 0; i < storedHMAC.Length; i++)
             {
                 if (computedHash[i] != storedHMAC[i])
                 {
                     hacked = true;
-                }
-            }
+                }//end if hacked
+            }//end loopp
             if (hacked)
             {
                 Console.WriteLine("Hash values differ! Signed file has been tampered with!");
                 return false;
-            }
+            }//end if hacked
+            //must not be hacked
             else
             {
                 Console.WriteLine("Hash values agree -- no tampering occurred.");
                 return true;
-            }
+            }//end not hacked
         } //end VerifyFile
-    }
-}
+    }//end decrypt class
+}//end namespace encrption utility
