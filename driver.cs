@@ -145,22 +145,31 @@ namespace encrypt_utility
                 //All conditions are set to begin attempt to encrypt data
                 try
                 {
-                    /*
-                     * 1. Create a master key using PBKDF#2
-                     * The rfc2898DeriveBytes function from the .NET Cryptography.Security
-                     * takes a password, salt, number of iterations, and algorith
-                     * to create the master key.
-                     * pwd1: the password to encrypt
-                     * salt1: a set of at least 8 bytes
-                     * myIterations: number of iterations (at least 1000)
-                     * HashAlgorithmName: hashing algorithm - see 
-                     *       https://docs.microsoft.com/en-us/dotnet/api/
-                     *       system.security.cryptography.hashalgorithmname?view=net-5.0
-                     *       For more information
-                     * output: masteryKey_Bytes: a master key from arguments to create other keys
-                    */
-                    // Application key generation statement
-                    Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
+                    if (keySize == 64)
+                    {
+                        byte[] dataToEncrypt = FileToByteArray(dataFile);
+                        originalDataLength = dataToEncrypt.Length;
+                        _3des.Apply3DES(dataToEncrypt, originalDataLength);
+                        System.Environment.Exit(1);
+                    }
+                    else
+                    {
+                        /*
+                         * 1. Create a master key using PBKDF#2
+                         * The rfc2898DeriveBytes function from the .NET Cryptography.Security
+                         * takes a password, salt, number of iterations, and algorith
+                         * to create the master key.
+                         * pwd1: the password to encrypt
+                         * salt1: a set of at least 8 bytes
+                         * myIterations: number of iterations (at least 1000)
+                         * HashAlgorithmName: hashing algorithm - see 
+                         *       https://docs.microsoft.com/en-us/dotnet/api/
+                         *       system.security.cryptography.hashalgorithmname?view=net-5.0
+                         *       For more information
+                         * output: masteryKey_Bytes: a master key from arguments to create other keys
+                        */
+                        // Application key generation statement
+                        Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
                     Console.WriteLine("++++++++++++ Generating Keys ++++++++++++++");
                     Console.WriteLine("Creating Master Key:");
                     KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations, keySize, hash_algorithm);
@@ -213,15 +222,19 @@ namespace encrypt_utility
                     originalDataLength = dataToEncrypt.Length;
                     //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
                     Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
-                    Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
-                    metaDataLength = encrypted_Obj.metaDataLength;
-                    encryptedDataLength = encrypted_Obj.encryptedDataLength;
-                    IVLength = encrypted_Obj.IVLength;
-                    byte[] encrypted = encrypted_Obj.encryptedData;
-                    encrypted_DataToDecrypt = encrypted;
-                    // Encryption Complete Statement
-                    Console.WriteLine("\n++++++++++ Encryption Complete ++++++++++++");
-                    //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+
+                        Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
+                        metaDataLength = encrypted_Obj.metaDataLength;
+                        encryptedDataLength = encrypted_Obj.encryptedDataLength;
+                        IVLength = encrypted_Obj.IVLength;
+                        byte[] encrypted = encrypted_Obj.encryptedData;
+                        encrypted_DataToDecrypt = encrypted;
+                        // Encryption Complete Statement
+                        Console.WriteLine("\n++++++++++ Encryption Complete ++++++++++++");
+                        //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+
+                    }
+
                 }//end try to encrypt
 
                 //must have had an error

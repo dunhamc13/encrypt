@@ -78,6 +78,9 @@ public class Encryption_Util
         using (Aes aes_enc = Aes.Create())
         {
             aes_enc.Mode = CipherMode.CBC;           //for CBC mode
+            if (encryptedKey.Length == 8)
+                aes_enc.BlockSize = 64;
+            aes_enc.BlockSize = 128;
             aes_enc.Key = encryptedKey;
             aes_enc.Padding = PaddingMode.PKCS7;
             aes_enc.GenerateIV();                    //for random IV  

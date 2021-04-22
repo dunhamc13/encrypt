@@ -52,7 +52,7 @@ namespace encrypt_utility
         {
 
             // variables to return
-            byte[] decrypted = new byte[160];
+            byte[] decrypted = new byte[encryptedDataLength];
 
 
             // Create an Aes object with the specified key and IV. 
