@@ -234,8 +234,7 @@ namespace encrypt_utility
             Console.WriteLine("\n\n+++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("++++++++++++ Decryption +++++++++++++");
             byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations);
-            string str = Convert.ToBase64String(dectrypted);
-            Console.WriteLine(str);
+            Console.WriteLine("Decrypted Bytes (b64-encode): {0}",Convert.ToBase64String(dectrypted));
         }//end main
     }
 }

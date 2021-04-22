@@ -31,6 +31,7 @@ namespace encrypt_utility
             {
                 KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations);
                 aesAlg.Key = keyGen_Master.MasterKey;
+                byte[] HMAC_Key = keyGen_Master.HMACKey;
                 aesAlg.Padding = PaddingMode.Zeros;
 
                 byte[] IV = new byte[aesAlg.BlockSize / 8];
@@ -41,18 +42,16 @@ namespace encrypt_utility
                 Array.Copy(dataStructure, dataStructure.Length - 32, IV, 0, IV.Length);
                 Array.Copy(dataStructure, dataStructure.Length - 16, encryptedData, 0, encryptedData.Length);
                 Array.Copy(dataStructure, dataStructure.Length - 32, combinedIVEncrypted, 0, combinedIVEncrypted.Length);
-                Array.Copy(dataStructure, 11, storedHMAC, 0, storedHMAC.Length);
+                Array.Copy(dataStructure,11, storedHMAC, 0, storedHMAC.Length);
 
                 //verify signature
-                verifyHMAC(aesAlg.Key, storedHMAC, combinedIVEncrypted);
-
+                verifyHMAC(HMAC_Key, storedHMAC, combinedIVEncrypted);
                 aesAlg.IV = IV;
                 aesAlg.Mode = CipherMode.CBC;
 
                 using (var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV))
                 {
                     decrypted = use_crypto(encryptedData, decryptor);
-
                 }
             }
             return decrypted;
@@ -73,24 +72,22 @@ namespace encrypt_utility
         // compare the data has not been tampered with.
         public static bool verifyHMAC(byte[] key, byte[] storedHMAC, byte[] combinedData)
         {
-            bool err = false;
+            bool hacked = false;
             // Initialize the keyed hash object.
-            using (HMACSHA256 hmac = new HMACSHA256(key))
-            {
-               
-                    byte[] computedHash = hmac.ComputeHash(combinedData);
-                    // compare the computed hash with the stored value
+            byte[] computedHash = HMAC_Gen.HMAC_Signature(key, combinedData);
+            Console.WriteLine("Stub 2.a verify check storedHMAC {0}", Convert.ToBase64String(storedHMAC));
+            Console.WriteLine("Stub 2.b verify check computedHa {0}", Convert.ToBase64String(computedHash));
 
-                    for (int i = 0; i < storedHMAC.Length; i++)
-                    {
-                        if (computedHash[i] != storedHMAC[i])
-                        {
-                            err = true;
-                        }
-                    }
-                
+            Console.WriteLine("Stored Length {0} computed length {1}", storedHMAC.Length, computedHash.Length);
+
+            for (int i = 0; i < storedHMAC.Length; i++)
+            {
+                if (computedHash[i] != storedHMAC[i])
+                {
+                    hacked = true;
+                }
             }
-            if (err)
+            if (hacked)
             {
                 Console.WriteLine("Hash values differ! Signed file has been tampered with!");
                 return false;

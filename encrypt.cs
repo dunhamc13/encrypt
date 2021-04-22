@@ -52,13 +52,14 @@ public class rfc2898key
         Array.Copy(IV, 0, combinedIvEncrypted, 0, IV.Length);
         Array.Copy(encrypted, 0, combinedIvEncrypted, IV.Length, encrypted.Length);
         byte[] mac = HMAC_Gen.HMAC_Signature(HMAC_key, combinedIvEncrypted);
+        Console.WriteLine("Stub Mac initial: {0}", Convert.ToBase64String(mac));
 
         /*
           * 4. Create HMAC of the IV and encrypted data
         */
         var dataStruct = new byte[metaData.Length + mac.Length + IV.Length + encrypted.Length];
         Array.Copy(metaData, 0, dataStruct, 0, metaData.Length);
-        Array.Copy(mac, 0, dataStruct, metaData.Length + metaData.Length, mac.Length);
+        Array.Copy(mac, 0, dataStruct, metaData.Length, mac.Length);
         Array.Copy(IV, 0, dataStruct, metaData.Length + mac.Length, IV.Length);
         Array.Copy(encrypted, 0, dataStruct, metaData.Length + mac.Length + IV.Length, encrypted.Length);
         Console.WriteLine("metadata length {0} HMAC length {1} IV length {2} Encrytped length {3}", metaData.Length, mac.Length, IV.Length, encrypted.Length);
