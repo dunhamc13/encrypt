@@ -11,19 +11,25 @@
  *    This program is the driver.  
  *
  * Design Rational:  
- *    One decision was xyz.... because....  
+ *    One decision was create separate classes for AES and 3DES to reduce code
+ *    smells and make it more modular.
  *
  *******************************************************************************
  *******************************************************************************
  *
  *                        Special Cases Identified
- * : Jpg : 
+ * : Picture files : 
+ * : xlsx files    :
  *
  *******************************************************************************
  *
  *******************************************************************************
  *Product BackLog :
- *                 1) xyz
+ *                 1) Picture files do not open (fixed)
+ *                 2) 3DES implementation is not complete
+ *                 3) 3DES is constrained to 192 bit key
+ *                 4) Not sure if 3des is CBC????
+ *                 5) xcel file do not open (fixed)
  *
  *******************************************************************************
  *
@@ -61,7 +67,7 @@ namespace encrypt_utility
          5. Encrypt your data with Ke and IV 
          6. Create an HMAC with Kh, covering both IV and encrypted data
        */
-        private const string usageText = "Usage: RFC2898 [password] [algorithm] [iterations] [file to encrypt]\n";
+        private const string usageText = "Usage: RFC2898 [password] [key size(128,192,256)] [hash size(256, 512)] [iterations] [file to encrypt (in VS proj append ../../../file.ext)]\n";
         public static void Main(string[] args)
         {
 
@@ -111,7 +117,7 @@ namespace encrypt_utility
                  * if using VS this will place the enctrypted files in the main repo folder
                  * else change path to desired location
                 */
-                signedFile = @"..\..\..\" + dataFile + ".enc";
+                signedFile = @"" + dataFile + ".enc";
 
 
                 // Application opening statement
@@ -119,7 +125,7 @@ namespace encrypt_utility
                 Console.WriteLine("+++++++++++ Encryption Utility ++++++++++++");
                 Console.WriteLine("Opening File to Encrypt and Reading:");
 
-                // Check if file exists to enctrypt, else exit
+                //Check if file exists to enctrypt, else exit
                 if (File.Exists(dataFile))
                 {
                     Console.WriteLine("The file exists.\n");
@@ -128,7 +134,7 @@ namespace encrypt_utility
                 //file must not exist
                 else
                 {
-                    Console.WriteLine("No file to encrypt, exiting\n");
+                    Console.WriteLine("No file to encrypt, exiting\n Check if in VS proj to append ../../../file.ext to file.ext");
                     System.Environment.Exit(1);
                 }//end if file doesn't exist
 
@@ -145,7 +151,7 @@ namespace encrypt_utility
                 //All conditions are set to begin attempt to encrypt data
                 try
                 {
-                    if (keySize == 64)
+                    if (keySize == 192)
                     {
                         byte[] dataToEncrypt = FileToByteArray(dataFile);
                         originalDataLength = dataToEncrypt.Length;
@@ -210,7 +216,7 @@ namespace encrypt_utility
                     Console.WriteLine("Initiating Enctryption:");
                     string EncAlg;
                     string kSize = keySize.ToString();
-                    if (keySize == 64)
+                    if (keySize == 192)
                         EncAlg = "3DES" + kSize;
                     else if (keySize == 128)
                         EncAlg = "AES" + kSize;
@@ -221,7 +227,7 @@ namespace encrypt_utility
                     byte[] dataToEncrypt = FileToByteArray(dataFile);
                     originalDataLength = dataToEncrypt.Length;
                     //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
-                    Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
+                    //Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
 
                         Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
                         metaDataLength = encrypted_Obj.metaDataLength;
@@ -230,7 +236,7 @@ namespace encrypt_utility
                         byte[] encrypted = encrypted_Obj.encryptedData;
                         encrypted_DataToDecrypt = encrypted;
                         // Encryption Complete Statement
-                        Console.WriteLine("\n++++++++++ Encryption Complete ++++++++++++");
+                        Console.WriteLine("++++++++++ Encryption Complete ++++++++++++");
                         //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
 
                     }
@@ -256,9 +262,12 @@ namespace encrypt_utility
             // Decrypt
             Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
             Console.WriteLine("+++++++++++++++ Decryption ++++++++++++++++");
+            Console.WriteLine("Sending encrypted data structure to parse..");
+            Console.WriteLine("parsing structure...  Check for tampering..");
             byte[] dectrypted = decrypt.DecryptFromBytes(encrypted_DataToDecrypt, pwd1, salt1, myIterations, originalDataLength, metaDataLength, encryptedDataLength, IVLength, macLength, keySize, hash_algorithm);
-
-            Console.WriteLine("Decrypted Bytes (b64-encode): {0}",Convert.ToBase64String(dectrypted));
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("+++++++++++ Decryption Complete +++++++++++");
+            //Console.WriteLine("Decrypted Bytes (b64-encode): {0}",Convert.ToBase64String(dectrypted));
         }//end main
 
         public static byte[] FileToByteArray(string fileName)

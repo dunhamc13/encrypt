@@ -55,7 +55,7 @@ public class KeyGen
     public int derivedIterations = 1;  //Derived iterations are only 1
     string encryptionSalt_String = "I am the Encryption Key";  // Set Salt
     string HMAC_Salt_String = "I am the HMAC Key";             // Set Salt
-    int keyBytes; //16bytes for aes128, 32bytes for 256, 8bytes for 64bit 3des
+    int keyBytes; //16bytes for aes128, 32bytes for 256, 24bytes for 192bit 3des (smaller keys no support)
     HashAlgorithmName han;
 
     /*
@@ -117,8 +117,8 @@ public class KeyGen
     */
     private void setKey(int keySize)
     {
-        if (keySize == 64)
-            this.keyBytes = 8;
+        if (keySize == 192)
+            this.keyBytes = 24;
         else if (keySize == 128)
             this.keyBytes = 16;
         else

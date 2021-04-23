@@ -43,7 +43,7 @@ public class HMAC_Gen
             // HMAC Statement
             Console.WriteLine("\n++++++++++++ Generating HMAC ++++++++++++++");
             hashValue = hmac.ComputeHash(sourceFile);
-            Console.WriteLine("HMAC (b64-encode): {0}", Convert.ToBase64String(hashValue), "\n\n");
+            //Console.WriteLine("HMAC (b64-encode): {0}", Convert.ToBase64String(hashValue), "\n\n");
         }//end using
         return hashValue;
     } // end HMAC_Signature

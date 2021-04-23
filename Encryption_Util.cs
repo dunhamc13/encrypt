@@ -87,7 +87,7 @@ public class Encryption_Util
             IV = aes_enc.IV;
 
             //STUB LINE : FOR VERIFICATION AND GRADING ONLY TODO: DELETE
-            Console.WriteLine("Original input IV {0}", Convert.ToBase64String(IV));
+            //Console.WriteLine("Original input IV {0}", Convert.ToBase64String(IV));
 
             //use memory stream / crypto stream to encrypt data
             var encryptor = aes_enc.CreateEncryptor(aes_enc.Key, aes_enc.IV);
@@ -110,7 +110,8 @@ public class Encryption_Util
         //get the HMAC of the IV and encrypted data
         byte[] mac = HMAC_Gen.HMAC_Signature(HMAC_key, combinedIvEncrypted);
         this.hmacLength = mac.Length;
-        Console.WriteLine("Original output encryptedData {0}", Convert.ToBase64String(encrypted));
+        //TODO: STUB 
+        //Console.WriteLine("Original output encryptedData {0}", Convert.ToBase64String(encrypted));
 
         // Create data structure to hold metadata hmac iv and encrypted data
         var dataStruct = new byte[metaData.Length + mac.Length + IV.Length + encrypted.Length];
@@ -121,7 +122,8 @@ public class Encryption_Util
         this.metaDataLength = metaData.Length;
         this.encryptedDataLength = encrypted.Length;
         this.IVLength = IV.Length;
-        Console.WriteLine("Encrypted Structure Created:\nMetadata length {0} HMAC length {1} IV length {2} Encrytped Data length {3}\nEncrypted File with .enc located in root folder.", metaData.Length, mac.Length, IV.Length, encrypted.Length);
+        //TODO: STUB
+       // Console.WriteLine("Encrypted Structure Created:\nMetadata length {0} HMAC length {1} IV length {2} Encrytped Data length {3}\nEncrypted File with .enc located in root folder.", metaData.Length, mac.Length, IV.Length, encrypted.Length);
 
         //Write encrypted structure to file
         File.WriteAllBytes(signedFile, dataStruct);

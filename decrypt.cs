@@ -82,8 +82,8 @@ namespace encrypt_utility
                 verifyHMAC(HMAC_Key, storedHMAC, combinedIVEncrypted);
 
                 // STUB FOR GRADING AND VERIFICAITON TODO: DELETE
-                Console.WriteLine("Metadata is {0}", Encoding.UTF8.GetString(metaData));
-                Console.WriteLine("Parsed Decrypt IV {0}", Convert.ToBase64String(IV));
+                //Console.WriteLine("\nMetadata is {0}", Encoding.UTF8.GetString(metaData));
+                //Console.WriteLine("\nParsed Decrypt IV {0}", Convert.ToBase64String(IV));
                 //Console.WriteLine("Stubbing output encryptedData {0}", Convert.ToBase64String(encryptedData));
 
                 //Use Streams to encrypt  
@@ -134,13 +134,13 @@ namespace encrypt_utility
             }//end loopp
             if (hacked)
             {
-                Console.WriteLine("Hash values differ! Signed file has been tampered with!");
+                Console.WriteLine("Hash values differ! Signed file has been tampered with!\n");
                 return false;
             }//end if hacked
             //must not be hacked
             else
             {
-                Console.WriteLine("Hash values agree -- no tampering occurred.");
+                Console.WriteLine("Hash values agree -- no tampering occurred.\n");
                 return true;
             }//end not hacked
         } //end VerifyFile

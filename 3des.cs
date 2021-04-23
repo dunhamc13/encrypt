@@ -1,7 +1,10 @@
 ﻿/* 
  * This code is largerly derived from the microsoft documentation on rfc2898
  * https://docs.microsoft.com/en-us/dotnet/api/
- *           system.security.cryptography.rfc2898derivebytes?view=net-5.0
+ *           system.security.cryptography.tripledes?view=net-5.0
+ *           
+ *           3des was a rush implementation, strongly using source code from:
+ *           https://www.c-sharpcorner.com/article/tripledes-encryption-in-c-sharp/
  * 
  * Notes About File
  * @File: 3des.cs
@@ -28,7 +31,8 @@
  *******************************************************************************
  *******************************************************************************
  *Product BackLog :
- *                 1) 
+ *                 1) Make this my own work
+ *                 2) I don't think this qualifies as CBC mode
  *
  *******************************************************************************
  *******************************************************************************
