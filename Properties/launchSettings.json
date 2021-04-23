@@ -2,7 +2,7 @@
   "profiles": {
     "encrypt_utility": {
       "commandName": "Project",
-      "commandLineArgs": "1234password 256 512 5000 ..\\..\\..\\test.png"
+      "commandLineArgs": "1234password!@#$%^&*ABCD 192 512 5000000 ..\\..\\..\\test.png"
     }
   }
 }

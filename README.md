@@ -10,7 +10,7 @@
 ### Configurations
 Command Line Arguments:`
 
-password : user created keep it to decrypt file
+password : user created keep it to decrypt file must be 24 characters
 
 key size(128,192,256) : program supports AES128 AES256 and 3DES192, input just the keysize in bits 
 
@@ -27,9 +27,7 @@ that the master key and password along with the encrypted data structure will al
 parsing the metadata and IV to correctly decrypt. It removes extra padding at end of decrypt.
 
 ### Current Description of future Implementation
-3DES needs more implemenation.  Current classes are heavily derived from examples.  Current 3DES
-does not write encrypted data structure to a new file, but passes the structure directly to the 
-decryptor.
+3DES needs more modularaization.. needs to be separated out.
 
 Will move the driver to me user prompted to allow a user to start with decryption instead of encryption.
 
@@ -42,17 +40,20 @@ The six combinations of six cases are:
 1. 3DES192 
 1. AES256 using SHA256 and SHA512
 
+There was no significance in difference in encryption times.  Therefor the program defaults to AES256 with SHA512 for the best security.
 
 
-Further into finding an optimal number of iterations between performance and security, three encryption tests were run on
-files of three different sizes, encrypt using AES256 and SHA256 with 100,000 iterations in the KDF function, summarizing in the following table:
+Depending on the use of the program and the user will determine what is the balance between performance and security, 10,000,000 iterations can be completed on an average of 7 seconds.
+1,000,000 iterations were completed on an average of 0.75 seconds in the KDF function.  Due to the low number of encryptions being 
+performed the table below summarizes a balance of 5,000,000 iterations for the entire file encryption, not just key generation (please note these were ran on a 32 CPU core your performance may vary):
 
-| File               | Size            | Time Encryption | Time Decryption
-| :-----------------:| :-------------: | --------------: | ----------------
-| Excel Workbook     |      9 kB      | 0.729825 secs   | 0.777776 secs
-| PNG Image          |     175 kB      | 0.757357 secs   | 0.777106 secs
-| TXT                |     1 KB      | 0.856867 secs   | 0.851239 secs
-
-The numbers show that the KDF generation is not the bottleneck of the encryption. This program can make configure doing 
-key derivation using 100,000 iterations, potentially higher if necessary.
+| File               | Size            | Time Encryption | 
+| :-----------------:| :-------------: | --------------: | 
+| Excel Workbook     |      9 kB       | 3.72 secs        | 
+| PNG Image          |     175 kB      | 3.74 secs        | 
+| TXT                |     1 KB        | 3.73 secs        |
+| ISO                |     2.034GB     | 13.78 secs
+ 
+The interprestion of what is seen is that the key generation iteration is not the bottleneck of the encryption. The size of the file to encrypt is
+what creates the largest overhead.  I am personally comfortable with a 3 second wait time to encrypt a single file.
 

@@ -26,10 +26,13 @@
  *******************************************************************************
  *Product BackLog :
  *                 1) Picture files do not open (fixed)
- *                 2) 3DES implementation is not complete
- *                 3) 3DES is constrained to 192 bit key
- *                 4) Not sure if 3des is CBC????
+ *                 2) 3DES implementation is not complete (fixed)
+ *                 3) 3DES is constrained to 192 bit key : TODO :
+ *                 4) Not sure if 3des is CBC???? (fixed)
  *                 5) xcel file do not open (fixed)
+ *                 6) Nasty code smells (replication due to 3des in the decrtyp
+ *                          and encrypt functions that are in the encrypt / 
+ *                          decript classes for aes. : TODO :
  *
  *******************************************************************************
  *
@@ -67,17 +70,10 @@ namespace encrypt_utility
          5. Encrypt your data with Ke and IV 
          6. Create an HMAC with Kh, covering both IV and encrypted data
        */
-        private const string usageText = "Usage: RFC2898 [password] [key size(128,192,256)] [hash size(256, 512)] [iterations] [file to encrypt (in VS proj append ../../../file.ext)]\n";
+        private const string usageText = "Usage: RFC2898 [password >= 24 chars or bytes] [key size(128,192,256)] [hash size(256, 512)] [iterations] [file to encrypt (in VS proj append ../../../file.ext)]\n";
         public static void Main(string[] args)
         {
 
-            /* 
-             * Implement timer for diagnostics
-             * Code modified from https://docs.microsoft.com/en-us/dotnet/
-             *         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
-            */
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
 
             // Declare variables needed for data file to encrypt and output enctrypted file
             string dataFile;                       //file to encrypt
@@ -112,152 +108,184 @@ namespace encrypt_utility
                 myIterations = Convert.ToInt32(args[3]); //number of iterations for master key
                 dataFile = args[4];
 
-                /* !USAGE
-                 * file to output encrypted data
-                 * if using VS this will place the enctrypted files in the main repo folder
-                 * else change path to desired location
-                */
-                signedFile = @"" + dataFile + ".enc";
-
-
-                // Application opening statement
-                Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
-                Console.WriteLine("+++++++++++ Encryption Utility ++++++++++++");
-                Console.WriteLine("Opening File to Encrypt and Reading:");
-
-                //Check if file exists to enctrypt, else exit
-                if (File.Exists(dataFile))
+                //check password long enough 
+                if (Encoding.ASCII.GetByteCount(pwd1) < 24)
                 {
-                    Console.WriteLine("The file exists.\n");
-                }//end if file exists
-
-                //file must not exist
+                    Console.WriteLine("Password must be 24 bytes or characters long.  Exiting Now.");
+                    System.Environment.Exit(1);
+                }//end check password
                 else
                 {
-                    Console.WriteLine("No file to encrypt, exiting\n Check if in VS proj to append ../../../file.ext to file.ext");
-                    System.Environment.Exit(1);
-                }//end if file doesn't exist
+                    /* !USAGE
+                * file to output encrypted data
+                * if using VS this will place the enctrypted files in the main repo folder
+                * else change path to desired location
+               */
+                    signedFile = @"" + dataFile + ".enc";
 
-                //Create a byte array to hold the random value for master key salt - must be 8 bytes
-                salt1 = new byte[8];
 
-                //Use CryptoService to generate random bytes for salt
-                using (RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider())
-                {
-                    // Fill the array with a random value.
-                    rngCsp.GetBytes(salt1);
-                }//end random salt creation
+                    // Application opening statement
+                    Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
+                    Console.WriteLine("+++++++++++ Encryption Utility ++++++++++++");
+                    Console.WriteLine("Opening File to Encrypt and Reading:");
 
-                //All conditions are set to begin attempt to encrypt data
-                try
-                {
-                    if (keySize == 192)
+                    //Check if file exists to enctrypt, else exit
+                    if (File.Exists(dataFile))
                     {
-                        byte[] dataToEncrypt = FileToByteArray(dataFile);
-                        originalDataLength = dataToEncrypt.Length;
-                        _3des.Apply3DES(dataToEncrypt, originalDataLength);
-                        System.Environment.Exit(1);
-                    }
+                        Console.WriteLine("The file exists.\n");
+                    }//end if file exists
+
+                    //file must not exist
                     else
                     {
-                        /*
-                         * 1. Create a master key using PBKDF#2
-                         * The rfc2898DeriveBytes function from the .NET Cryptography.Security
-                         * takes a password, salt, number of iterations, and algorith
-                         * to create the master key.
-                         * pwd1: the password to encrypt
-                         * salt1: a set of at least 8 bytes
-                         * myIterations: number of iterations (at least 1000)
-                         * HashAlgorithmName: hashing algorithm - see 
-                         *       https://docs.microsoft.com/en-us/dotnet/api/
-                         *       system.security.cryptography.hashalgorithmname?view=net-5.0
-                         *       For more information
-                         * output: masteryKey_Bytes: a master key from arguments to create other keys
-                        */
-                        // Application key generation statement
-                        Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
-                    Console.WriteLine("++++++++++++ Generating Keys ++++++++++++++");
-                    Console.WriteLine("Creating Master Key:");
-                    KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations, keySize, hash_algorithm);
-                    byte[] masterKey_Bytes = keyGen_Master.MasterKey;
+                        Console.WriteLine("No file to encrypt, exiting\n Check if in VS proj to append ../../../file.ext to file.ext");
+                        System.Environment.Exit(1);
+                    }//end if file doesn't exist
 
-                    /*
-                     * 2. Create encryption key and hmac key
-                     * Once we have an rfc2898 generated master key we use it 
-                     * to derive the keys, but change the salt and iterations.
-                     * masterKey_Bytes: the password to encrypt
-                     * salt2/3: unique to each key needs to be at least 8 bytes
-                     * numIter: number of iterations set to 1 as per specificaition
-                     * HashAlgorithmName: hashing algorithm - see 
-                     *       https://docs.microsoft.com/en-us/dotnet/api/
-                     *       system.security.cryptography.hashalgorithmname?
-                     *       view=net-5.0
-                     *       For more information
-                     * output: encryptionKey/HMAC_Key: a master key from arguments
-                     */
+                    //Create a byte array to hold the random value for master key salt - must be 8 bytes
+                    salt1 = new byte[8];
 
-                    //Encryption Key Creation
-                    Console.WriteLine("Creating Encryption Key:");
-                    byte[] encryptionKey_Bytes = keyGen_Master.EncryptionKey;
+                    //Use CryptoService to generate random bytes for salt
+                    using (RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider())
+                    {
+                        // Fill the array with a random value.
+                        rngCsp.GetBytes(salt1);
+                    }//end random salt creation
 
-                    //HMAC Key Creation
-                    Console.WriteLine("Creating HMAC Key:\n");
-                    byte[] HMACKey_Bytes = keyGen_Master.HMACKey;
+                    //All conditions are set to begin attempt to encrypt data
+                    try
+                    {
 
-                    /*
-                     * 3. Encrypt data using CBC chaining mode
-                     * Must work with 3DES, AES128, AES256
-                     * Use random IV that is one block size
-                     * Do not assume block size
-                     * output: enctrypted : byte[] [metadata][hmac][iv][enctrypted data]
-                     */
-                    Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
-                    Console.WriteLine("+++++++++ Encryption Processing +++++++++++");
-                    Console.WriteLine("Initiating Enctryption:");
-                    string EncAlg;
-                    string kSize = keySize.ToString();
-                    if (keySize == 192)
-                        EncAlg = "3DES" + kSize;
-                    else if (keySize == 128)
-                        EncAlg = "AES" + kSize;
-                    else EncAlg = "AES" + kSize;
-                         
-                    string metaData_string = EncAlg + "+" + hash_algorithm + "+" + myIterations;
-                    byte[] metaData = Encoding.ASCII.GetBytes(metaData_string);
-                    byte[] dataToEncrypt = FileToByteArray(dataFile);
-                    originalDataLength = dataToEncrypt.Length;
-                    //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
-                    //Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
+                            /*
+                             * 1. Create a master key using PBKDF#2
+                             * The rfc2898DeriveBytes function from the .NET Cryptography.Security
+                             * takes a password, salt, number of iterations, and algorith
+                             * to create the master key.
+                             * pwd1: the password to encrypt
+                             * salt1: a set of at least 8 bytes
+                             * myIterations: number of iterations (at least 1000)
+                             * HashAlgorithmName: hashing algorithm - see 
+                             *       https://docs.microsoft.com/en-us/dotnet/api/
+                             *       system.security.cryptography.hashalgorithmname?view=net-5.0
+                             *       For more information
+                             * output: masteryKey_Bytes: a master key from arguments to create other keys
+                            */
+                            // Application key generation statement
+                            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
+                            Console.WriteLine("++++++++++++ Generating Keys ++++++++++++++");
+                            Console.WriteLine("Creating Master Key:");
+                            Console.WriteLine("Creating Encryption Key:");
+                            Console.WriteLine("Creating HMAC Key:\n");
+                            /* 
+                              * Implement timer for diagnostics
+                              * Code modified from https://docs.microsoft.com/en-us/dotnet/
+                              *         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
+                            */
+                            Stopwatch stopWatch = new Stopwatch();
+                            stopWatch.Start();
+                            KeyGen keyGen_Master = new KeyGen(pwd1, salt1, myIterations, keySize, hash_algorithm);
+                            byte[] masterKey_Bytes = keyGen_Master.MasterKey;
 
-                        Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
-                        metaDataLength = encrypted_Obj.metaDataLength;
-                        encryptedDataLength = encrypted_Obj.encryptedDataLength;
-                        IVLength = encrypted_Obj.IVLength;
-                        byte[] encrypted = encrypted_Obj.encryptedData;
-                        encrypted_DataToDecrypt = encrypted;
-                        // Encryption Complete Statement
-                        Console.WriteLine("++++++++++ Encryption Complete ++++++++++++");
-                        //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+                            /*
+                             * 2. Create encryption key and hmac key
+                             * Once we have an rfc2898 generated master key we use it 
+                             * to derive the keys, but change the salt and iterations.
+                             * masterKey_Bytes: the password to encrypt
+                             * salt2/3: unique to each key needs to be at least 8 bytes
+                             * numIter: number of iterations set to 1 as per specificaition
+                             * HashAlgorithmName: hashing algorithm - see 
+                             *       https://docs.microsoft.com/en-us/dotnet/api/
+                             *       system.security.cryptography.hashalgorithmname?
+                             *       view=net-5.0
+                             *       For more information
+                             * output: encryptionKey/HMAC_Key: a master key from arguments
+                            */
 
-                    }
+                            //Encryption Key Creation
+                            byte[] encryptionKey_Bytes = keyGen_Master.EncryptionKey;
 
-                }//end try to encrypt
+                            //HMAC Key Creation
+                            byte[] HMACKey_Bytes = keyGen_Master.HMACKey;
 
-                //must have had an error
-                catch (Exception e)
-                {
-                    Console.WriteLine("Error: {0}", e);
-                }//end catch
+                            /*
+                             * 3. Encrypt data using CBC chaining mode
+                             * Must work with 3DES, AES128, AES256
+                             * Use random IV that is one block size
+                             * Do not assume block size
+                             * output: enctrypted : byte[] [metadata][hmac][iv][enctrypted data]
+                            */
+                            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++");
+                            Console.WriteLine("+++++++++ Encryption Processing +++++++++++");
+                            Console.WriteLine("Initiating Enctryption:");
+                            string EncAlg;
+                            string kSize = keySize.ToString();
+                            if (keySize == 192)
+                                EncAlg = "3DES" + kSize;
+                            else if (keySize == 128)
+                                EncAlg = "AES" + kSize;
+                            else EncAlg = "AES" + kSize;
+
+                            string metaData_string = EncAlg + "+" + hash_algorithm + "+" + myIterations;
+                            byte[] metaData = Encoding.ASCII.GetBytes(metaData_string);
+                            byte[] dataToEncrypt = FileToByteArray(dataFile);
+                            originalDataLength = dataToEncrypt.Length;
+                        //byte[] dataToEncrypt = System.IO.File.ReadAllBytes(dataFile);
+                        //Console.WriteLine("Original Input (b-64 encode): {0} ", Convert.ToBase64String(dataToEncrypt));
+                        if (keySize == 192)
+                        {
+                            originalDataLength = dataToEncrypt.Length;
+
+                            /* 
+                              * Implement timer for diagnostics
+                              * Code modified from https://docs.microsoft.com/en-us/dotnet/
+                              *         api/system.diagnostics.stopwatch.elapsed?view=net-5.0
+                            */
+                            Stopwatch sw = new Stopwatch();
+                            sw.Start();
+                            _3des tdesObj = new _3des(dataToEncrypt, originalDataLength, pwd1, masterKey_Bytes, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile, salt1, myIterations, macLength, keySize, hash_algorithm);
+                            //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+
+                            // Timing Statement
+                            Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
+                            Console.WriteLine("+++++++++ Calculating Enc/Dec Time ++++++++++");
+                            sw.Stop();
+                            TimeSpan tss = stopWatch.Elapsed;
+                            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                                  tss.Hours, tss.Minutes, tss.Seconds, tss.Milliseconds);
+                            Console.WriteLine("RunTime " + sw.Elapsed + "\n");
+                            System.Environment.Exit(1);
+                        }
+                        else
+                        {
+                            Encryption_Util encrypted_Obj = new Encryption_Util(dataToEncrypt, encryptionKey_Bytes, metaData, HMACKey_Bytes, signedFile);
+                            metaDataLength = encrypted_Obj.metaDataLength;
+                            encryptedDataLength = encrypted_Obj.encryptedDataLength;
+                            IVLength = encrypted_Obj.IVLength;
+                            byte[] encrypted = encrypted_Obj.encryptedData;
+                            encrypted_DataToDecrypt = encrypted;
+                            // Encryption Complete Statement
+                            Console.WriteLine("++++++++++ Encryption Complete ++++++++++++");
+                            //Console.WriteLine("Encrypted Data Structure (b64-encode): {0}", Convert.ToBase64String(encrypted_DataToDecrypt));
+
+                            // Timing Statement
+                            Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
+                            Console.WriteLine("+++++++++++ Calculating Enc Time ++++++++++++");
+                            stopWatch.Stop();
+                            TimeSpan ts = stopWatch.Elapsed;
+                            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                                  ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+                            Console.WriteLine("RunTime " + stopWatch.Elapsed + "\n");
+                        }
+
+                    }//end try to encrypt
+
+                    //must have had an error
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error: {0}", e);
+                    }//end catch
+                }
             }//end had all 4 args
-
-            // Timing Statement
-            Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
-            Console.WriteLine("++++++++++++ Calculating Time +++++++++++++");
-            stopWatch.Stop();
-            TimeSpan ts = stopWatch.Elapsed;
-            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
-                  ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
-            Console.WriteLine("RunTime " + stopWatch.Elapsed);
 
             // Decrypt
             Console.WriteLine("\n+++++++++++++++++++++++++++++++++++++++++++");
